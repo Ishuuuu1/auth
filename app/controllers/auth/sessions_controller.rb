@@ -3,6 +3,7 @@
 require "net/http"
 require "uri"
 require "set"
+require 'cgi'
 
 module Auth
   class SessionsController < CoauthController
@@ -11,9 +12,54 @@ module Auth
     # Inline login
     def new
       details = params.permit(:provider, :continue, :id)
+      continue_uri = details[:continue]
+
+      if continue_uri
+        parsed_uri = Addressable::URI.parse(continue_uri)
+
+        # we won't set continue to files (except html)
+        # we 401 here as this redirect is most likely caused by asset protection
+        ext = parsed_uri.extname
+        if ext.presence && ext.downcase != ".html"
+          head :bad_request
+          return
+        end
+
+        # check for x-api-keys
+        # if they exist and are valid (making a request to rest-api to confirm)
+        # then configure a long lasting verified cookie
+        query_params = parsed_uri.query
+        query_fragment = parsed_uri.fragment
+        if query_fragment
+          query_fragment = query_fragment.split("?")[1]
+        end
+
+        [query_params, query_fragment].compact.each do |raw_continue_params|
+          continue_params = URI.decode_www_form(raw_continue_params).to_h
+
+          api_key = continue_params["api-key"] || continue_params["x-api-key"]
+          if api_key && api_key_valid?(api_key)
+            configure_asset_access
+            redirect_continue(continue_uri) { "/" }
+            return
+          end
+        end
+      end
+
       remove_session
-      set_continue(details[:continue])
-      uri = "/auth/#{details[:provider]}"
+      provider = details[:provider]
+      auth_id = details[:id]
+
+      # use default login if URI not provided
+      if !provider.presence || !auth_id.presence
+        authority = current_authority
+        login_uri = authority.login_url
+        redirect_to authority.login_url.gsub("{{url}}", continue_uri), status: :see_other
+        return
+      end
+
+      set_continue(continue_uri)
+      uri = "/auth/#{provider}"
 
       # Support generic auth sources
       uri = "#{uri}?id=#{details[:id]}" if details[:id]

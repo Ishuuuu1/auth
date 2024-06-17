@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "rails", "~> 7.0.4"
+gem "rails", "~> 7.1.3"
 
 # We don't use the mail gem
 gem "net-smtp", require: false
@@ -21,14 +21,11 @@ gem "redis"
 gem "doorkeeper", "~> 5.6"
 gem "doorkeeper-jwt"
 gem "jwt"
+gem "nkf" # required for omniauth-oauth2 in Ruby 3.4
 gem "omniauth", "~> 1.9"
 gem "omniauth-ldap2"
 gem "omniauth-oauth2"
 gem "omniauth-saml"
-
-# Uploads (rethink update looks like a rails compatibility update)
-gem "condo", git: "https://github.com/cotag/Condominios.git", branch: "rails7"
-gem "condo_active_record", git: "https://github.com/cotag/condo_active_record.git"
 
 # Model support
 gem "addressable"
@@ -49,6 +46,7 @@ gem "rbtrace"
 
 # Fast JSON parsing
 gem "yajl-ruby"
+gem "multi_json"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
